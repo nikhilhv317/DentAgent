@@ -12,7 +12,7 @@ Agents:
     Smart Scheduling      -> GET  /api/scheduling/today                  (morning job + on demand)
                              POST /api/scheduling/approve
 """
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Body, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Body, Request, WebSocket
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -626,6 +626,83 @@ async def api_clinical_voice(file: UploadFile = File(...), patient_id: int = For
             pass
 
 
+@app.websocket("/ws/dictation")
+async def ws_dictation(ws: WebSocket):
+    """Live dictation. Protocol:
+      client -> {"type": "auth", "token": "...", "patient_id": N}       (first message)
+      client -> binary frames: 16 kHz mono int16 PCM from the microphone
+      client -> {"type": "stop"}
+      server -> ready | speech{speaking} | partial{text, transcript} | transcript | note | error
+    Silero VAD cuts utterances at pauses; each is transcribed on the CPU while the next
+    is spoken (agents/voice_stream.py). The token travels in a message, not the URL,
+    so it never lands in access logs. Clinician/admin only, own clinic's patients."""
+    import asyncio
+    import json as _json
+    from agents.voice_stream import DictationSession
+    from auth import decode_token
+
+    await ws.accept()
+    try:
+        hello = _json.loads(await asyncio.wait_for(ws.receive_text(), timeout=10))
+        payload = decode_token(hello.get("token", ""))
+        staff = db.get_staff_by_username(payload.get("sub", ""))
+        patient = db.get_patient(int(hello.get("patient_id") or 0))
+    except Exception:
+        await ws.send_json({"type": "error", "detail": "not authenticated"})
+        await ws.close(code=4401)
+        return
+    if not staff or staff.get("role") not in ("admin", "clinician"):
+        await ws.send_json({"type": "error", "detail": "Needs role: clinician or admin"})
+        await ws.close(code=4403)
+        return
+    if patient is None or int(patient.get("clinic_id") or 1) != int(staff.get("clinic_id") or 1):
+        await ws.send_json({"type": "error", "detail": "patient not found"})
+        await ws.close(code=4404)
+        return
+
+    loop = asyncio.get_running_loop()
+    out: asyncio.Queue = asyncio.Queue()
+    session = DictationSession(lambda e: loop.call_soon_threadsafe(out.put_nowait, e))
+
+    async def sender():                     # the only coroutine that writes to the socket
+        while (e := await out.get()) is not None:
+            await ws.send_json(e)
+
+    send_task = asyncio.create_task(sender())
+    out.put_nowait({"type": "ready"})
+    try:
+        while True:
+            msg = await ws.receive()
+            if msg["type"] == "websocket.disconnect":
+                session.jobs.put(None)
+                return
+            if msg.get("bytes"):
+                await loop.run_in_executor(None, session.feed, msg["bytes"])
+            elif msg.get("text") and _json.loads(msg["text"]).get("type") == "stop":
+                break
+        t = await loop.run_in_executor(None, session.finish, None)
+        out.put_nowait({"type": "transcript", **t})          # shown before the note is drafted
+        if not t["transcript"]:
+            out.put_nowait({"type": "error", "detail": "no speech was recognised"})
+        else:
+            from agents import voice
+            complaint, findings = voice.split_dictation(t["transcript"])
+            note = await loop.run_in_executor(None, lambda: agents.run(
+                "clinical_assistant", patient_id=patient["id"], complaint=complaint,
+                findings=findings, findings_from_exam=True))
+            out.put_nowait({"type": "note", "note": note, "complaint_from_dictation": complaint,
+                            "findings_from_dictation": findings})
+    except Exception as e:
+        out.put_nowait({"type": "error", "detail": str(e)[:200]})
+    finally:
+        out.put_nowait(None)
+        try:
+            await send_task
+            await ws.close()
+        except Exception:
+            pass
+
+
 # ---- Imaging & Diagnostic (vision agent) ------------------------------------
 
 @app.post("/api/imaging/analyze")
@@ -721,6 +798,25 @@ async def api_imaging_video(file: UploadFile = File(...), patient_id: int = Form
 # ---- morning job: the "Daily Schedule Job" trigger --------------------------
 # Runs the scheduling analysis once each morning so the doctor arrives to a
 # prepared, parked-at-approval schedule instead of a spinner.
+
+@app.on_event("startup")
+def _warm_models():
+    """Load Whisper, Silero VAD and the drafting model in the background, so the first
+    dictation doesn't wait ~14 s for model loads. DPMS_WARMUP=0 skips it."""
+    if os.getenv("DPMS_WARMUP", "1") == "0":
+        return
+    import threading
+
+    def warm():
+        try:
+            from agents import voice
+            voice.warm_up()
+        except Exception as e:
+            db.add_log("voice", "startup", f"Whisper warm-up failed: {e}")
+        import llm
+        llm.warm_up()
+    threading.Thread(target=warm, daemon=True, name="model-warmup").start()
+
 
 @app.on_event("startup")
 def _resume_pipelines():

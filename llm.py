@@ -173,6 +173,25 @@ def _hf_complete(path: str, system: str, user: str, s) -> dict:
         raise LLMUnavailable(f"fine-tuned model returned invalid JSON: {e}") from e
 
 
+def warm_up(tasks=("soap_note", "report_summary")):
+    """Load the drafting model(s) before the first request: the fine-tuned model is a
+    3.4 GB load (~10 s) that otherwise lands on the first dictation's SOAP draft;
+    an Ollama model gets loaded into memory and kept there (keep_alive)."""
+    for model in {resolve_model(t) for t in tasks}:
+        try:
+            if model.startswith("hf:"):
+                class _NoSpan:
+                    def set_attribute(self, *a): pass
+                try:
+                    _hf_complete(model[3:], "Reply with JSON.", 'Return {"ok": true}', _NoSpan())
+                except LLMUnavailable:
+                    pass          # loaded fine; a non-JSON reply to the dummy prompt doesn't matter
+            else:
+                _client().generate(model=model, prompt="", keep_alive="30m")
+        except Exception:
+            pass                  # warm-up is best effort; the real call reports errors
+
+
 def _complete_json(model: str, system: str, user: str, schema: dict | None, s) -> dict:
     if model.startswith("hf:"):
         return _hf_complete(model[3:], system, user, s)

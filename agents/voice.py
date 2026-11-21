@@ -7,8 +7,11 @@ machine — audio never leaves the clinic — and the transcript goes to the
 Clinical Assistant as the clinician's own dictated findings, so the note is
 drafted, grounded, safety-checked and cited exactly like a typed one.
 
-Model: Whisper "small" (WHISPER_MODEL to change), on the GPU in float16 when
-CTranslate2 can use it, otherwise on the CPU in int8. Loaded once, kept warm.
+Model: Whisper "small" (WHISPER_MODEL to change) on the CPU in int8 — no GPU
+libraries needed. Loaded once and kept warm (warm_up() at app start). For speed,
+the live flow (agents/voice_stream.py) transcribes each utterance while the next
+is being spoken, with greedy decoding; this file's transcribe() is the
+upload-a-recording path.
 """
 from __future__ import annotations
 
@@ -21,31 +24,48 @@ DENTAL_PROMPT = ("Dental clinical dictation. Caries, gingivitis, periodontitis, 
                  "calculus, plaque, abscess, percussion, mobility, pocketing, tooth #46, #38, mm.")
 _model = None
 _device = None
+_lock = __import__("threading").Lock()
 
 
 class VoiceUnavailable(Exception):
     pass
 
 
-def _load(force_cpu: bool = False):
+def _load():
+    """CPU-only Whisper, int8, all cores. Thread-safe: loaded once and shared."""
     global _model, _device
-    if _model is not None and not (force_cpu and _device != "cpu"):
+    if _model is not None:
         return _model
-    try:
-        from faster_whisper import WhisperModel
-    except ImportError as e:
-        raise VoiceUnavailable("install faster-whisper") from e
-    errors = []
-    wanted = os.getenv("WHISPER_DEVICE", "cpu" if force_cpu else "auto")
-    options = [("cpu", "int8")] if wanted == "cpu" else [("cuda", "float16"), ("cpu", "int8")]
-    for device, compute in options:
-        try:
-            _model = WhisperModel(WHISPER_MODEL, device=device, compute_type=compute)
-            _device = device
-            return _model
-        except Exception as e:   # no CUDA runtime for CTranslate2 -> try the CPU
-            errors.append(f"{device}: {e}")
-    raise VoiceUnavailable("could not load Whisper: " + "; ".join(errors))
+    with _lock:
+        if _model is None:
+            try:
+                from faster_whisper import WhisperModel
+            except ImportError as e:
+                raise VoiceUnavailable("install faster-whisper") from e
+            _model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8",
+                                  cpu_threads=os.cpu_count() or 4)
+            _device = "cpu"
+    return _model
+
+
+def warm_up():
+    """Load Whisper + Silero and run one tiny transcription, so the first real
+    dictation doesn't pay the ~2-5 s model load. Called in a thread at app start."""
+    import numpy as np
+    from faster_whisper.vad import get_vad_model
+    get_vad_model()
+    transcribe_array(np.zeros(16000, dtype=np.float32))
+
+
+def transcribe_array(audio, previous: str = "") -> str:
+    """One utterance (16 kHz float32, already cut by the VAD) -> text. Greedy decoding
+    and no second VAD pass keep it fast on the CPU; the dental prompt plus the tail of
+    what was already said keeps terms and context consistent across utterances."""
+    model = _load()
+    segments, _ = model.transcribe(audio, language="en", beam_size=1, vad_filter=False,
+                                   condition_on_previous_text=False, without_timestamps=True,
+                                   initial_prompt=(DENTAL_PROMPT + " " + previous).strip())
+    return " ".join(seg.text.strip() for seg in segments).strip()
 
 
 def _decode(path: str, rate: int = 16000):
@@ -66,22 +86,11 @@ def _decode(path: str, rate: int = 16000):
 
 
 def transcribe(audio_path: str) -> dict:
-    """Transcribe one recording. Returns {text, language, seconds, device}."""
+    """Transcribe one recording (upload path). Returns {text, language, seconds, device}."""
     audio = _decode(audio_path)
-
-    def run(model):
-        segments, info = model.transcribe(audio, language="en", beam_size=5, vad_filter=True,
-                                          initial_prompt=DENTAL_PROMPT)
-        return " ".join(s.text.strip() for s in segments).strip(), info
-
-    try:
-        text, info = run(_load())
-    except RuntimeError as e:
-        # CTranslate2's GPU build needs CUDA 12 cuBLAS/cuDNN DLLs; without them the
-        # model LOADS on cuda but fails on first use. Fall back to the CPU for good.
-        if _device != "cuda" or not any(k in str(e).lower() for k in ("cublas", "cudnn", "cuda")):
-            raise
-        text, info = run(_load(force_cpu=True))
+    segments, info = _load().transcribe(audio, language="en", beam_size=1, vad_filter=True,
+                                        without_timestamps=True, initial_prompt=DENTAL_PROMPT)
+    text = " ".join(seg.text.strip() for seg in segments).strip()
     return {"text": fix_dental_terms(text), "language": info.language,
             "seconds": round(info.duration, 1), "device": _device}
 

@@ -846,37 +846,71 @@ async function loadReport(){
     if(lab) lab.textContent = n ? `Imaging findings from Scan (${n} image${n>1?'s':''})` : 'Imaging findings (from Scan)';
   }
 }
-// ---- Voice-to-SOAP: record in the browser, transcribe + draft on the server (local Whisper) ----
-let REC=null, REC_CHUNKS=[];
+// ---- Voice-to-SOAP, live: mic -> 16 kHz PCM over a WebSocket -> Silero VAD + Whisper (CPU) on the server.
+// Each utterance is transcribed while the next is spoken, so pressing Stop only waits for the last one.
+let DICT=null;
+const WORKLET = `class Pcm16 extends AudioWorkletProcessor {
+  constructor(){ super(); this.buf=[]; }
+  process(inputs){ const ch=inputs[0][0]; if(ch){ for(let i=0;i<ch.length;i++) this.buf.push(ch[i]);
+    if(this.buf.length>=1600){ const out=new Int16Array(this.buf.length);
+      for(let i=0;i<this.buf.length;i++){ const v=Math.max(-1,Math.min(1,this.buf[i])); out[i]=v<0?v*0x8000:v*0x7fff; }
+      this.port.postMessage(out.buffer,[out.buffer]); this.buf=[]; } } return true; } }
+registerProcessor('pcm16', Pcm16);`;
+
 async function toggleDictation(){
   const b=$('#btn-dictate'), out=$('#dictate-result');
-  if(REC&&REC.state==='recording'){ REC.stop(); return; }
+  if(DICT){ stopDictation(); return; }
   if(!ACTIVE) return;
+  let stream, ctx, ws;
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    REC=new MediaRecorder(stream); REC_CHUNKS=[];
-    REC.ondataavailable=e=>{ if(e.data.size) REC_CHUNKS.push(e.data); };
-    REC.onstop=async()=>{
-      stream.getTracks().forEach(t=>t.stop());
-      b.textContent='Transcribing…'; b.disabled=true;
-      const fd=new FormData();
-      fd.append('file', new Blob(REC_CHUNKS,{type:REC.mimeType||'audio/webm'}), 'dictation.webm');
-      fd.append('patient_id', ACTIVE.id);
-      const r=await apiForm('/api/clinical/voice', fd);
-      b.textContent='🎙 Dictate SOAP note'; b.disabled=false;
-      if(!r||!r.soap){ out.innerHTML=`<div class="empty">${esc((r&&r.detail)||'Could not transcribe the recording.')}</div>`; return; }
-      const s=r.soap, src=r.sources||{};
-      const flags=(r.unsupported||[]).length?`<div class="disclaimer" style="color:#b45309">⚠ ${r.unsupported.length} finding(s) to verify: ${esc(r.unsupported.map(u=>u.claim).join(', '))}</div>`:'';
-      out.innerHTML=`<div class="section-label" style="margin:16px 0 6px">Dictated SOAP note <span class="tag llm">Transcribed locally (${esc(r.transcript.device)})</span></div>
-        <div class="disclaimer" style="margin:0 0 8px">Transcript: “${esc(r.transcript.text)}”</div>
-        <div class="agent-summary"><b>S</b> ${cite(s.subjective,src)}<br><b>O</b> ${cite(s.objective,src)}<br><b>A</b> ${cite(s.assessment,src)}<br><b>P</b> ${esc((s.plan||[]).join('; '))}</div>${flags}
-        <div class="btn-row">${(r.actions||[]).map(a=>`<button class="btn tiny act-approve" data-id="${a.id}">${esc(a.label)}</button>`).join('')}</div>`;
-      out.querySelectorAll('.act-approve').forEach(x=>x.addEventListener('click',()=>approveGeneric(x)));
-      const rc=$('#rep-clinical'); if(rc&&!rc.value.trim()) rc.value=r.findings_from_dictation||'';
-    };
-    REC.start(); b.textContent='⏹ Stop and transcribe';
-    out.innerHTML='<div class="empty">Recording… speak the complaint, then “on examination …”.</div>';
-  }catch(e){ out.innerHTML='<div class="empty">Microphone not available in this browser.</div>'; }
+    stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});
+    ctx=new AudioContext({sampleRate:16000});                       // the browser resamples to 16 kHz
+    await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET],{type:'application/javascript'})));
+  }catch(e){ out.innerHTML='<div class="empty">Microphone not available: allow mic access for this site.</div>'; return; }
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/dictation');
+  ws.binaryType='arraybuffer';
+  const node=new AudioWorkletNode(ctx,'pcm16'), src=ctx.createMediaStreamSource(stream);
+  DICT={stream,ctx,ws,node,src,stopped:false};
+  out.innerHTML=`<div class="section-label" style="margin:16px 0 6px">Live dictation <span class="tag llm" id="dict-state">connecting…</span></div>
+    <div class="agent-summary" id="dict-live" style="min-height:48px;color:var(--muted)">Speak the complaint, then “on examination …”. Text appears after each pause.</div>
+    <div id="dict-note"></div>`;
+  b.textContent='⏹ Stop';
+  ws.onopen=()=>ws.send(JSON.stringify({type:'auth',token:TOKEN,patient_id:ACTIVE.id}));
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data), st=$('#dict-state'), live=$('#dict-live'), noteEl=$('#dict-note');
+    if(m.type==='ready'){ src.connect(node); node.port.onmessage=e=>{ if(ws.readyState===1&&!DICT.stopped) ws.send(e.data); }; st.textContent='listening'; }
+    else if(m.type==='speech'){ st.textContent=m.speaking?'● speaking':'listening'; }
+    else if(m.type==='partial'){ live.style.color=''; live.textContent=m.transcript; }
+    else if(m.type==='transcript'){ live.style.color=''; live.textContent=m.transcript||'(nothing recognised)'; st.textContent='drafting note…'; }
+    else if(m.type==='note'){ renderDictatedNote(m, noteEl); st.textContent='done'; }
+    else if(m.type==='error'){ noteEl.innerHTML=`<div class="empty">${esc(m.detail)}</div>`; st.textContent='error'; }
+  };
+  ws.onclose=()=>{ cleanupDictation(); };
+}
+function stopDictation(){
+  if(!DICT||DICT.stopped) return;
+  DICT.stopped=true;
+  try{ DICT.src.disconnect(); }catch(e){}
+  DICT.stream.getTracks().forEach(t=>t.stop());
+  const b=$('#btn-dictate'); b.textContent='Finishing…'; b.disabled=true;
+  if(DICT.ws.readyState===1) DICT.ws.send(JSON.stringify({type:'stop'}));
+  const st=$('#dict-state'); if(st) st.textContent='finishing last sentence…';
+}
+function cleanupDictation(){
+  if(!DICT) return;
+  try{ DICT.ctx.close(); }catch(e){}
+  DICT.stream.getTracks().forEach(t=>t.stop());
+  DICT=null;
+  const b=$('#btn-dictate'); if(b){ b.textContent='🎙 Dictate SOAP note'; b.disabled=false; }
+}
+function renderDictatedNote(m, el){
+  const r=m.note, s=r.soap, src=r.sources||{};
+  const flags=(r.unsupported||[]).length?`<div class="disclaimer" style="color:#b45309">⚠ ${r.unsupported.length} finding(s) to verify: ${esc(r.unsupported.map(u=>u.claim).join(', '))}</div>`:'';
+  el.innerHTML=`<div class="section-label" style="margin:12px 0 6px">Dictated SOAP note</div>
+    <div class="agent-summary"><b>S</b> ${cite(s.subjective,src)}<br><b>O</b> ${cite(s.objective,src)}<br><b>A</b> ${cite(s.assessment,src)}<br><b>P</b> ${esc((s.plan||[]).join('; '))}</div>${flags}
+    <div class="btn-row">${(r.actions||[]).map(a=>`<button class="btn tiny act-approve" data-id="${a.id}">${esc(a.label)}</button>`).join('')}</div>`;
+  el.querySelectorAll('.act-approve').forEach(x=>x.addEventListener('click',()=>approveGeneric(x)));
+  const rc=$('#rep-clinical'); if(rc&&!rc.value.trim()) rc.value=m.findings_from_dictation||'';
 }
 
 async function genReport(){

@@ -188,15 +188,28 @@ client that called it. A cloud-hosted assistant therefore receives patient data,
 which gives up the "nothing leaves the clinic" property. Use de-identified data,
 or a client running a local model, for real patients.
 
-## Voice-to-SOAP
+## Voice-to-SOAP (live)
 
-**Create Report → 🎙 Dictate SOAP note** records in the browser.
-`POST /api/clinical/voice` transcribes the recording on this machine with
-faster-whisper ("small"; GPU if CTranslate2's CUDA 12 libraries are present,
-otherwise CPU int8, about 14 s for 17 s of audio). It splits the dictation at
-"on examination…" into complaint and findings, then drafts the SOAP note
-through the Clinical Assistant, so the note is grounded, safety-checked and
-cited. Audio is deleted after transcription.
+**Create Report → 🎙 Dictate SOAP note** streams the microphone to the server
+over a WebSocket (`/ws/dictation`; 16 kHz PCM from an AudioWorklet). **Silero
+VAD** cuts the speech at each pause, and **Whisper small** transcribes that
+utterance on the **CPU** while the next one is being spoken. You see the text
+after every pause. On **Stop**, only the last sentence is left: the transcript
+arrives about 1 s later and the grounded, cited SOAP note a few seconds after
+that. Measured with a 16 s dictation: 0.8 s to transcript and 6.8 s to the
+finished note after Stop, against ~14 s just to transcribe with the old
+record-then-upload flow.
+
+- Everything is local and CPU-only (no GPU libraries for speech). The token is
+  sent as the first WebSocket message, not in the URL. Clinician or admin role,
+  own clinic's patients only.
+- Whisper, Silero and the drafting model are loaded at app start in the
+  background (`DPMS_WARMUP=0` to skip), so the first dictation doesn't wait for
+  model loads.
+- The dictation is split at "on examination…" into complaint and findings. A
+  dental vocabulary prompt and a context-only fix ("distal carries" → "caries")
+  improve terms.
+- `POST /api/clinical/voice` (upload a recording) still works as a fallback.
 
 ## Per-patient memory
 
