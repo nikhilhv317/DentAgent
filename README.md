@@ -1,6 +1,6 @@
 # DentAgent — Agentic AI for Dental Practices
 
-**Local-first AI agents that draft grounded, cited clinical notes, screen dental images and run the clinic's workflow, with a clinician approving every action.**
+**AI agents that draft grounded, cited clinical notes, screen dental images and run the clinic's workflow, with a clinician approving every action.**
 
 Everything runs on the clinic's own machine (Ollama / transformers), so patient
 data never leaves it. Nine agents share one registry and one output contract:

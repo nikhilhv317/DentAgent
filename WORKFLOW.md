@@ -1,7 +1,7 @@
 # DentAgent — Agentic Dental Practice System
 ### Full workflow & AI documentation
 
-A local-first, agentic dental practice management prototype. One web app, one
+An agentic dental practice management prototype. One web app, one
 Python backend, one database, four working AI agents — every model runs on the
 clinic's own machine, so patient data never leaves it. This document covers the
 entire system end to end: the architecture, every AI/ML component, each agent,
@@ -546,6 +546,6 @@ your installed scikit-learn version.
 
 ---
 
-*Local-first · agentic · human-in-the-loop. Four AI models — logistic regression,
+*Agentic · human-in-the-loop. Four AI models — logistic regression,
 a two-stage CNN vision pipeline, and a tiny LLM — behind one clinic UI, each one
 proposing while a clinician decides.*
