@@ -1,7 +1,7 @@
 # DentAgent — End-to-End Technical Report
 
 **Project:** DentAgent, an agentic AI layer for a dental practice-management system (DPMS)
-**Repository:** `D:\Agents` (GitHub: nikhilhv317/Agents)
+**Repository:** `D:\Agents` (GitHub: nikhilhv317/DentAgent)
 **Date:** 22 November 2026
 **Status at writing:** 41/41 unit tests pass; offline checker suite 62/62 (precision 1.0, recall 1.0);
 drafting evals with the fine-tuned model: 0% invented content, 0% safety violations, 0% citation failures.
