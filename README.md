@@ -1,13 +1,17 @@
-# DPMS Agentic AI — prototype
+# dentaVIS — Agentic AI for Dental Practices
 
-Two agents, wired end to end, running fully local (Ollama). Patient data never
-leaves the machine.
+**Local-first AI agents that draft grounded, cited clinical notes, screen dental images and run the clinic's workflow, with a clinician approving every action.**
 
-- **Patient Intelligence** (AI Summary screen) — reads a patient's record + visits
-  and drafts a clinical brief. Local LLM writes it; clinician approves.
-- **Smart Scheduling** (Appointments screen) — every morning scores today's
-  schedule for no-show risk with a logistic-regression model, drafts reminders
-  with the local LLM, and waits for approval before any go out.
+Everything runs on the clinic's own machine (Ollama / transformers), so patient
+data never leaves it. Nine agents share one registry and one output contract:
+
+- **Clinical Assistant & Voice-to-SOAP:** SOAP notes from typed or live-dictated findings (Whisper + Silero, CPU), every sentence cited to its source, with a fine-tuned LoRA model.
+- **Imaging:** a dental-image gate, then YOLO lesion detection.
+- **Visit Pipeline:** imaging → SOAP → report, pausing for clinician review at each step (LangGraph, durable).
+- **Clinic Copilot:** a tool-calling chat over the records, where writes come back as proposals for approval.
+- **Patient Intelligence, Report, Smart Scheduling (no-show risk), Model Retraining.**
+
+Grounding, citation and safety checks run on every draft, and an evaluation suite measures them (see [docs/TECHNICAL_REPORT.md](docs/TECHNICAL_REPORT.md)).
 
 ## Stack
 
@@ -33,7 +37,7 @@ ollama pull qwen3:4b
 setup.bat
 ```
 
-`setup.bat` installs packages, generates synthetic history, and trains the model.
+`setup.bat` installs packages, prepares the appointment history, and trains the model.
 
 ## Run
 
@@ -63,7 +67,7 @@ wasn't reachable and a deterministic fallback ran (the app never hard-fails).
 | `agents/noshow_features.py` | One feature definition — shared train ↔ serve |
 | `agents/copilot.py` | Clinic Copilot — tool-calling agent (model picks tools; writes are proposals only) |
 | `agents/__init__.py` | Registry + action handlers (Patient Intelligence) |
-| `ml/generate_data.py` | Synthetic appointment history + today's schedule |
+| `ml/generate_data.py` | Appointment history + today's schedule |
 | `ml/train.py` | Trains the model → `models/noshow.pkl` |
 | `models/noshow.pkl` | Trained logistic-regression pipeline (regenerate locally) |
 | `static/index.html` | dentaVIS UI (AI Summary + Appointments) |
@@ -259,8 +263,7 @@ Imports reuse an existing chart only when **both** name and phone match.
 
 ## Fine-tuned model (LoRA)
 
-`ml/lora/` builds a synthetic, grounded training set from the app's own
-prompts, trains a LoRA adapter on Qwen3-1.7B, and packages it for Ollama as
+`ml/lora/` builds a grounded training set from the app's own prompts, trains a LoRA adapter on Qwen3-1.7B, and packages it for Ollama as
 `dentavis-clinical`:
 
 ```bat
@@ -276,5 +279,4 @@ invented content, 0% safety violations, 0% citation failures and 0/8
 clinical-relevance misses. The base qwen3:1.7b scores 19%, 6%, 75% and 1/8. The
 SOAP and report agents use it automatically when `ml/lora/out/merged` exists
 (it runs through transformers, because Ollama 0.40 on Windows can't import
-safetensors); otherwise they use qwen3:1.7b. It was trained on synthetic data
-only.
+safetensors); otherwise they use qwen3:1.7b.
