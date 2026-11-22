@@ -97,6 +97,6 @@ Still open:
 
 ## Suggested strategy
 
-Don't sell it as "AI that reads X-rays." Sell it as **a private AI assistant for the whole visit, where nothing leaves the clinic**: voice → grounded SOAP → report → recall, with every AI claim cited and approved by a clinician. Start with privacy-sensitive or low-connectivity clinics, such as Indian private practices and dental chains. That's where cloud competitors are weakest and the local-first design is strongest.
+Don't sell it as "AI that reads X-rays." Sell it as **a private AI assistant for the whole visit, where nothing leaves the clinic**: voice → grounded SOAP → report → recall, with every AI claim cited and approved by a clinician. Start with privacy-sensitive or low-connectivity clinics, such as Indian private practices and dental chains. That's where cloud competitors are weakest and this design is strongest.
 
 The first step that unlocks the rest is the evaluation set (item 1). Without measured accuracy, nothing else can be shown to a clinic or regulator.
