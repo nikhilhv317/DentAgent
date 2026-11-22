@@ -52,7 +52,7 @@ MAX_HISTORY_TURNS = 10     # prior chat messages sent back to the model
 MAX_RESULT_CHARS = 4000    # cap each tool result fed to the model
 TRACE_PREVIEW_CHARS = 400  # cap each tool result shown in the UI trace
 
-SYSTEM = f"""You are the Clinic Copilot for a dental practice (dentaVIS).
+SYSTEM = f"""You are the Clinic Copilot for a dental practice (DentAgent).
 You help clinic staff by looking things up with your tools and answering concisely.
 
 Rules:

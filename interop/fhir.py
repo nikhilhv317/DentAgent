@@ -1,6 +1,6 @@
 """
 FHIR R4 export/import. Uses the R4B models from `fhir.resources` to validate
-every resource, so what leaves dentaVIS is structurally valid FHIR.
+every resource, so what leaves DentAgent is structurally valid FHIR.
 
 Export (one patient -> Bundle of type "collection"):
   Patient, AllergyIntolerance (one per allergy), Condition (one per condition),
@@ -16,7 +16,7 @@ from datetime import date
 
 import db
 
-SYSTEM_MRN = "urn:dentavis:mrn"
+SYSTEM_MRN = "urn:dentagent:mrn"
 
 
 def _ref(kind: str, rid) -> dict:
@@ -41,7 +41,7 @@ def patient_bundle(patient_id: int) -> dict:
     if p.get("phone"):
         patient["telecom"] = [{"system": "phone", "value": p["phone"]}]
     if p.get("age"):   # the chart stores age, not date of birth — export the year as an estimate
-        patient["extension"] = [{"url": "urn:dentavis:age-years", "valueInteger": int(p["age"])}]
+        patient["extension"] = [{"url": "urn:dentagent:age-years", "valueInteger": int(p["age"])}]
     resources = [patient]
     for i, a in enumerate(t.strip() for t in re.split(r"[,;]", p.get("allergies") or "") if t.strip()):
         resources.append({"resourceType": "AllergyIntolerance", "id": f"{pid}-allergy-{i}",
@@ -78,7 +78,7 @@ def patient_bundle(patient_id: int) -> dict:
                                                       "data": base64.b64encode(text.encode()).decode()}}]})
         resources[-1] = {k: val for k, val in resources[-1].items() if val is not None}
     bundle = {"resourceType": "Bundle", "id": str(uuid.uuid4()), "type": "collection",
-              "entry": [{"fullUrl": f"urn:dentavis:{r['resourceType']}/{r['id']}", "resource": r} for r in resources]}
+              "entry": [{"fullUrl": f"urn:dentagent:{r['resourceType']}/{r['id']}", "resource": r} for r in resources]}
     Bundle.model_validate(bundle)          # raises if anything isn't valid FHIR R4
     return bundle
 

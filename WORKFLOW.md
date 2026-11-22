@@ -1,4 +1,4 @@
-# dentaVIS — Agentic Dental Practice System
+# DentAgent — Agentic Dental Practice System
 ### Full workflow & AI documentation
 
 A local-first, agentic dental practice management prototype. One web app, one
@@ -30,7 +30,7 @@ the clinical workflow, the data model, the API, and how to run it.
 
 ## 1. What the product is
 
-**dentaVIS** is a dental clinic application that puts four AI agents behind an
+**DentAgent** is a dental clinic application that puts four AI agents behind an
 ordinary clinic UI. A front-desk user triages the day's appointments for
 no-show risk; then, per patient, the clinician screens dental images for disease
 and generates a short clinical report. The distinguishing idea is that every AI
@@ -52,7 +52,7 @@ No cloud API, no API key, no patient data leaving the machine.
 ## 2. The stack (one whole product)
 
 ```
- HTML/JS (dentaVIS single-page UI)
+ HTML/JS (DentAgent single-page UI)
         │  HTTP / JSON
         ▼
  FastAPI  (app.py)  ── serves the UI and every agent API
@@ -73,7 +73,7 @@ No cloud API, no API key, no patient data leaving the machine.
                                 notes, reports, agent actions & log
 ```
 
-- **Frontend:** a single self-contained `static/index.html` (the dentaVIS shell —
+- **Frontend:** a single self-contained `static/index.html` (the DentAgent shell —
   login, sidebar, all screens). No build step, no framework. Voice input has been
   fully removed.
 - **Backend:** FastAPI + Uvicorn. One process serves the page and all APIs.
@@ -461,7 +461,7 @@ D:\Agents\
 ├── models\
 │   └── noshow.pkl               trained logistic-regression pipeline
 └── static\
-    └── index.html               the whole dentaVIS UI (no voice)
+    └── index.html               the whole DentAgent UI (no voice)
 ```
 
 ---

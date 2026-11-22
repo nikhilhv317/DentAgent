@@ -1,8 +1,8 @@
 """
-Package the merged LoRA model for Ollama as `dentavis-clinical`.
+Package the merged LoRA model for Ollama as `dentagent-clinical`.
 
     python ml/lora/train.py --merge      # first: ml/lora/out/merged (safetensors)
-    python ml/lora/to_ollama.py          # then: ollama create dentavis-clinical
+    python ml/lora/to_ollama.py          # then: ollama create dentagent-clinical
 
 The chat template and stop tokens are copied from the installed base model
 (`ollama show qwen3:1.7b --modelfile`), so the fine-tuned model is prompted exactly
@@ -17,7 +17,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MERGED = os.path.join(HERE, "out", "merged")
-NAME = os.getenv("LORA_MODEL", "dentavis-clinical")
+NAME = os.getenv("LORA_MODEL", "dentagent-clinical")
 BASE_TAG = os.getenv("LORA_BASE_TAG", "qwen3:1.7b")
 # 4-bit like the base tag. Ollama >= 0.40 names it "int4" (older versions: "q4_K_M")
 QUANT = os.getenv("LORA_QUANT", "int4")

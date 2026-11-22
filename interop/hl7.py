@@ -35,7 +35,7 @@ def _field(seg: list[str], n: int, comp: int | None = None) -> str:
 def _ack(msh: list[str] | None, code: str, text: str = "") -> str:
     ctrl = _field(msh, 10) if msh else ""
     now = datetime.now().strftime("%Y%m%d%H%M%S")
-    return (f"MSH|^~\\&|DENTAVIS|CLINIC|||{now}||ACK|ACK{ctrl}|P|2.5\r"
+    return (f"MSH|^~\\&|DENTAGENT|CLINIC|||{now}||ACK|ACK{ctrl}|P|2.5\r"
             f"MSA|{code}|{ctrl}" + (f"|{text}" if text else "") + "\r")
 
 

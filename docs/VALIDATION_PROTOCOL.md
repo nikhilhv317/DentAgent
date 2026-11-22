@@ -2,14 +2,14 @@
 
 Roadmap item 10 in [STRATEGY.md](STRATEGY.md). This is a **study design and regulatory plan**. It isn't a
 validation, and no clearance has been sought. Until a study like this is run and an authority clears the
-device, dentaVIS must present imaging output as *screening support reviewed by a clinician*, never as a
+device, DentAgent must present imaging output as *screening support reviewed by a clinician*, never as a
 diagnosis. That's how the app works today: findings are proposals a clinician approves.
 
 ## 1. Device and intended use
 
 | | |
 |---|---|
-| Software | dentaVIS imaging agent (`agents/imaging_agent.py`, `vision/pipeline.py`) |
+| Software | DentAgent imaging agent (`agents/imaging_agent.py`, `vision/pipeline.py`) |
 | Stage 1 | EfficientNetV2-S "dental image?" gate. P(dental) ≥ 0.08 passes. |
 | Stage 2 | YOLO detector, 8 classes: early caries, advanced caries, gingivitis, hypodontia (shown as "Edentulism"), plaque, discoloration, ulcer, abnormal. Confidence threshold 0.10. |
 | Intended use (proposed) | Computer-aided **detection** (CADe) on intraoral photographs and intraoral-camera frames. It flags regions for a licensed dentist to review in an outpatient dental setting. The dentist makes the diagnosis. |
@@ -121,7 +121,7 @@ A fully crossed multi-reader multi-case design:
   4. A Predetermined Change Control Plan (PCCP), if the model will be retrained after clearance.
   5. A standalone performance study plus the MRMC reader study.
   6. The 510(k) submission.
-- Note: dentaVIS's weekly retraining applies to the *no-show* model, not the vision model. Any automatic
+- Note: DentAgent's weekly retraining applies to the *no-show* model, not the vision model. Any automatic
   retraining of the vision model would need a cleared PCCP.
 
 **EU (if needed):** MDR Rule 11 software, probably Class IIa. Needs a notified body; the same evidence is

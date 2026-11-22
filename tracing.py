@@ -71,7 +71,7 @@ def _init():
                 except Exception:
                     return SpanExportResult.FAILURE
 
-        provider = TracerProvider(resource=Resource.create({"service.name": "dentavis"}))
+        provider = TracerProvider(resource=Resource.create({"service.name": "dentagent"}))
         provider.add_span_processor(SimpleSpanProcessor(SQLiteSpanExporter()))
         if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
             try:
@@ -79,7 +79,7 @@ def _init():
                 provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
             except ImportError:
                 pass
-        _tracer = provider.get_tracer("dentavis")
+        _tracer = provider.get_tracer("dentagent")
         return _tracer
 
 

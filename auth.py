@@ -32,7 +32,7 @@ import db
 
 # Never fall back to a fixed, published secret — anyone who knows it can forge
 # a token for any user. The old dev default is rejected explicitly.
-_KNOWN_WEAK_SECRETS = {"", "dentavis-dev-secret-change-in-prod",
+_KNOWN_WEAK_SECRETS = {"", "dentagent-dev-secret-change-in-prod", "dentavis-dev-secret-change-in-prod",
                        "change-me-to-a-long-random-string"}
 SECRET_KEY = os.getenv("JWT_SECRET", "")
 if SECRET_KEY in _KNOWN_WEAK_SECRETS or len(SECRET_KEY) < 32:

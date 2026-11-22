@@ -1,5 +1,5 @@
 """
-Synthetic, grounded training data for the dentaVIS LoRA adapter (roadmap item 9).
+Synthetic, grounded training data for the DentAgent LoRA adapter (roadmap item 9).
 
 There are no real de-identified dental notes in this project, so the training
 set is generated: random (fictional) patients, histories and visits, turned into

@@ -33,7 +33,7 @@ def test_fhir_import_creates_then_reuses_chart(client, admin):
 
 
 def test_hl7_adt_a04_registers_patient_and_acks(client, admin):
-    msg = ("MSH|^~\\&|HIS|HOSP|DENTAVIS|CLINIC|20261121093000||ADT^A04|MSG0001|P|2.5\r"
+    msg = ("MSH|^~\\&|HIS|HOSP|DENTAGENT|CLINIC|20261121093000||ADT^A04|MSG0001|P|2.5\r"
            "PID|1||H12345^^^HOSP||Shah^Rohan||19850312|M|||||9876501234\r"
            "AL1|1|DA|^Penicillin\r"
            "DG1|1||E11^Type 2 diabetes\r")

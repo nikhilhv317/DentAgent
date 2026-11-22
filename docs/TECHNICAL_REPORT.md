@@ -1,6 +1,6 @@
-# dentaVIS — End-to-End Technical Report
+# DentAgent — End-to-End Technical Report
 
-**Project:** dentaVIS, an agentic AI layer for a dental practice-management system (DPMS)
+**Project:** DentAgent, an agentic AI layer for a dental practice-management system (DPMS)
 **Repository:** `D:\Agents` (GitHub: nikhilhv317/Agents)
 **Date:** 22 November 2026
 **Status at writing:** 41/41 unit tests pass; offline checker suite 62/62 (precision 1.0, recall 1.0);
@@ -41,7 +41,7 @@ Appendix A. File map
 
 ## 1. Summary
 
-dentaVIS adds AI agents to a dental clinic's workflow: imaging screening, SOAP-note drafting,
+DentAgent adds AI agents to a dental clinic's workflow: imaging screening, SOAP-note drafting,
 visit reports, patient briefs, no-show prediction, voice dictation, and a tool-calling chat
 assistant ("Copilot"). Everything runs **locally**. Models are served by Ollama or transformers on
 the clinic's own machine, so patient data never leaves it.
@@ -62,7 +62,7 @@ Three ideas run through the whole design:
 
 ## 2. Problem and design principles
 
-| Clinic problem | dentaVIS answer |
+| Clinic problem | DentAgent answer |
 |---|---|
 | Notes take time to write | Clinical Assistant drafts SOAP notes; Voice-to-SOAP drafts them from dictation |
 | Radiographs/intraoral photos need screening | Two-stage vision model: dental gate → YOLO lesion detector |
@@ -710,12 +710,12 @@ different people).
 
 ## 18. MCP server: `mcp_server.py`
 
-Exposes dentaVIS to external AI assistants over the Model Context Protocol (stdio):
+Exposes DentAgent to external AI assistants over the Model Context Protocol (stdio):
 `list_agents`, `run_agent` (admin-only and file-input agents excluded), the Copilot's read tools
 and the `propose_*` tools (still only proposals). Errors are raised as `ToolError`.
 
 ```powershell
-claude mcp add dentavis -- D:\medrag_transfer\.venv\Scripts\python.exe D:\Agents\mcp_server.py
+claude mcp add dentagent -- D:\medrag_transfer\.venv\Scripts\python.exe D:\Agents\mcp_server.py
 ```
 
 Privacy note: the server is local, but whatever it returns goes to the calling client. A

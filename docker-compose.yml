@@ -1,7 +1,7 @@
-# dentaVIS — local Docker Compose stack.
+# DentAgent — local Docker Compose stack.
 #
 # Two containers:
-#   ollama  — the model server. dentaVIS's llm.py talks to it over HTTP, same
+#   ollama  — the model server. DentAgent's llm.py talks to it over HTTP, same
 #             as it does to a locally-installed Ollama — just at a different
 #             host (the "ollama" service name Compose resolves on its network,
 #             instead of localhost).
@@ -18,7 +18,7 @@
 services:
   ollama:
     image: ollama/ollama:latest
-    container_name: dentavis-ollama
+    container_name: dentagent-ollama
     volumes:
       - ollama_data:/root/.ollama   # pulled models persist across restarts/rebuilds
     restart: unless-stopped
@@ -30,7 +30,7 @@ services:
 
   app:
     build: .
-    container_name: dentavis-app
+    container_name: dentagent-app
     depends_on:
       - ollama
     ports:

@@ -11,7 +11,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-_TMP = tempfile.mkdtemp(prefix="dentavis-test-")
+_TMP = tempfile.mkdtemp(prefix="dentagent-test-")
 os.environ["DPMS_DB_PATH"] = os.path.join(_TMP, "test.db")
 os.environ["ADMIN_PASSWORD"] = "admin-test-pw"
 os.environ.setdefault("JWT_SECRET", "test-secret-" + "x" * 40)

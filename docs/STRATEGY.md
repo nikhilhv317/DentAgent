@@ -1,4 +1,4 @@
-# dentaVIS: where it stands, and where to take it
+# DentAgent: where it stands, and where to take it
 
 *Assessment as of November 2026 (commit `d6db51d`, which added the agent registry). Market notes come from general knowledge up to mid-2026; check them before relying on them.*
 
@@ -27,7 +27,7 @@ Dental AI spending has gathered in four areas:
 - **Billing and insurance claims automation:** clinics feel the return on investment directly here.
 - **Front-desk voice agents:** answering calls, booking, and sending recall and reminder messages.
 
-dentaVIS touches all four lightly but leads in none.
+DentAgent touches all four lightly but leads in none.
 
 ### Technical gaps
 
@@ -51,7 +51,7 @@ dentaVIS touches all four lightly but leads in none.
 
 4. **Voice-to-SOAP:** run Whisper locally to turn a recording into a draft SOAP note, with the existing grounding check. This joins the hottest category while keeping data on-site, which is a clear pitch.
 5. **Memory per patient:** search over each patient's past notes (for example with `nomic-embed-text`), so the agents see full history instead of the last few visits.
-6. **MCP server:** expose the agent registry and the Copilot's tools through MCP, the standard way AI tools plug into each other. Other agents and assistants could then use dentaVIS without custom integration.
+6. **MCP server:** expose the agent registry and the Copilot's tools through MCP, the standard way AI tools plug into each other. Other agents and assistants could then use DentAgent without custom integration.
 7. **Tracing:** use OpenTelemetry or Langfuse to record each agent step, tool call and approval. This also strengthens the audit trail for compliance.
 
 ### Later (to sell it)

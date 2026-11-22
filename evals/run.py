@@ -1,5 +1,5 @@
 """
-dentaVIS evaluation runner.
+DentAgent evaluation runner.
 
     python evals/run.py                       # offline checker suite — what CI runs
     python evals/run.py --suite live          # drafting + copilot on the local Ollama model
@@ -45,7 +45,7 @@ WRITE_TOOLS = {"propose_followup", "propose_chart_note", "propose_patient_messag
 
 def _fresh_db():
     """Point the app at a throwaway database BEFORE anything imports db."""
-    os.environ["DPMS_DB_PATH"] = os.path.join(tempfile.mkdtemp(prefix="dentavis-eval-"), "eval.db")
+    os.environ["DPMS_DB_PATH"] = os.path.join(tempfile.mkdtemp(prefix="dentagent-eval-"), "eval.db")
     import db
     db.init_db()
     return db

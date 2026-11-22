@@ -1,5 +1,5 @@
 """
-Interoperability (roadmap item 8): getting data in and out of dentaVIS in the
+Interoperability (roadmap item 8): getting data in and out of DentAgent in the
 formats other clinic systems speak.
 
   fhir.py   FHIR R4 (R4B) — export a patient as a Bundle; import a Patient/Bundle

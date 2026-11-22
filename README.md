@@ -1,4 +1,4 @@
-# dentaVIS — Agentic AI for Dental Practices
+# DentAgent — Agentic AI for Dental Practices
 
 **Local-first AI agents that draft grounded, cited clinical notes, screen dental images and run the clinic's workflow, with a clinician approving every action.**
 
@@ -16,7 +16,7 @@ Grounding, citation and safety checks run on every draft, and an evaluation suit
 ## Stack
 
 ```
-HTML/JS (dentaVIS UI) → HTTP/JSON → FastAPI → Agents → Ollama (local)
+HTML/JS (DentAgent UI) → HTTP/JSON → FastAPI → Agents → Ollama (local)
                                        │         │
                                        │         └─ scikit-learn (no-show model)
                                      SQLite         LangGraph (scheduling flow)
@@ -70,7 +70,7 @@ wasn't reachable and a deterministic fallback ran (the app never hard-fails).
 | `ml/generate_data.py` | Appointment history + today's schedule |
 | `ml/train.py` | Trains the model → `models/noshow.pkl` |
 | `models/noshow.pkl` | Trained logistic-regression pipeline (regenerate locally) |
-| `static/index.html` | dentaVIS UI (AI Summary + Appointments) |
+| `static/index.html` | DentAgent UI (AI Summary + Appointments) |
 | `setup.bat` / `run.bat` | Windows one-time setup / daily launch |
 
 ## Model notes
@@ -166,22 +166,22 @@ Cases, known gaps and the current baseline: [evals/README.md](evals/README.md).
 ## MCP server
 
 `mcp_server.py` exposes the agent registry and the Copilot's tools over the
-Model Context Protocol (stdio), so other AI assistants can use dentaVIS:
+Model Context Protocol (stdio), so other AI assistants can use DentAgent:
 `list_agents`, `run_agent` (admin-only and file-upload agents excluded), the
 read tools (`find_patients`, `get_patient_record`, `get_patient_notes`,
 `get_imaging_findings`, `search_patient_history`, `get_schedule`) and the
-`propose_*` tools, which only create actions a clinician approves in dentaVIS.
+`propose_*` tools, which only create actions a clinician approves in DentAgent.
 
 Claude Code:
 
 ```bat
-claude mcp add dentavis -- D:\medrag_transfer\.venv\Scripts\python.exe D:\Agents\mcp_server.py
+claude mcp add dentagent -- D:\medrag_transfer\.venv\Scripts\python.exe D:\Agents\mcp_server.py
 ```
 
 Claude Desktop (`claude_desktop_config.json`):
 
 ```json
-{"mcpServers": {"dentavis": {
+{"mcpServers": {"dentagent": {
   "command": "D:\medrag_transfer\.venv\Scripts\python.exe",
   "args": ["D:\Agents\mcp_server.py"],
   "env": {"DPMS_DB_PATH": "D:\Agents\dpms.db"}}}}
@@ -264,14 +264,14 @@ Imports reuse an existing chart only when **both** name and phone match.
 ## Fine-tuned model (LoRA)
 
 `ml/lora/` builds a grounded training set from the app's own prompts, trains a LoRA adapter on Qwen3-1.7B, and packages it for Ollama as
-`dentavis-clinical`:
+`dentagent-clinical`:
 
 ```bat
 python ml\lora\make_data.py
 python ml\lora\train.py --epochs 2
 python ml\lora\train.py --merge
 python ml\lora\to_ollama.py
-python evals\run.py --suite drafting --model dentavis-clinical
+python evals\run.py --suite drafting --model dentagent-clinical
 ```
 
 Results (`evals/README.md`): on the drafting evals the fine-tuned model has 0%

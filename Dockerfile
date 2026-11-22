@@ -1,4 +1,4 @@
-# dentaVIS — app image.
+# DentAgent — app image.
 #
 # What's baked into this image: Python + all dependencies + your source code
 # (app.py, agents/, ml/, static/, etc.).
